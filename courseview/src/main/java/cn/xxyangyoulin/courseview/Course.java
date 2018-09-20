@@ -8,7 +8,7 @@ public class Course {
     /**
      * 所占行数
      */
-    protected int rowNum;
+    protected int rowNum = 1;
     /**
      * 列号
      */
@@ -24,6 +24,9 @@ public class Course {
         this.rowNum = rowNum;
         this.col = col;
         this.color = color;
+    }
+
+    public Course() {
     }
 
     public int getRow() {

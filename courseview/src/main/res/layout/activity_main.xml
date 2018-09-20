@@ -7,16 +7,16 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="32dp"
-        android:layout_marginTop="32dp"
-        android:background="#11000000">
+    <!--<ScrollView-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:layout_marginBottom="32dp"-->
+        <!--android:layout_marginTop="32dp"-->
+        <!--android:background="#11000000">-->
 
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+        <!--<HorizontalScrollView-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content">-->
 
 
             <cn.xxyangyoulin.courseview.CourseView
@@ -24,6 +24,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">
             </cn.xxyangyoulin.courseview.CourseView>
-        </HorizontalScrollView>
-    </ScrollView>
+        <!--</HorizontalScrollView>-->
+    <!--</ScrollView>-->
 </LinearLayout>
