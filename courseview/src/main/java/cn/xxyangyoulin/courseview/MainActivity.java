@@ -18,13 +18,14 @@ public class MainActivity extends AppCompatActivity {
 
         mCourseView = findViewById(R.id.CourseView);
 
-        mCourseView.addCourseBeforeInit(new Course(1, 2, 4, Color.GRAY).setText("y"));
-        mCourseView.addCourseBeforeInit(new Course(4, 2, 6, Color.GRAY).setText("y"));
-        mCourseView.addCourseBeforeInit(new Course(2, 2, 2, Color.GRAY).setText("y"));
-        mCourseView.addCourseBeforeInit(new Course(5, 2, 8, Color.GRAY).setText("y"));
+        mCourseView.addCourseBeforeInit(new Course(1, 2, 4, Color.GRAY).setText("y").setColor(0xFFD32F2F));
+        mCourseView.addCourseBeforeInit(new Course(4, 2, 6, Color.GRAY).setText("y").setColor(0xFF7B1FA2));
+        mCourseView.addCourseBeforeInit(new Course(2, 2, 2, Color.GRAY).setText("y").setColor(0xFF512DA8));
+        mCourseView.addCourseBeforeInit(new Course(5, 2, 8, Color.GRAY).setText("y").setColor(0xFF303F9F));
 
         System.out.println("----------获取的值：" + mCourseView.getRowItemWidth());
 
+        mCourseView.setTextLRPadding(20,10);
 
         mCourseView.setOnItemClickListener(new CourseView.OnItemClickListener() {
             @Override
@@ -32,13 +33,14 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("click" + courses);
                 super.onClick(courses, itemLayout);
             }
+
             int i=0;
 
             @Override
             void onAdd(Course course, View addView) {
                 super.onAdd(course, addView);
-                mCourseView.addCourseAfterInit(new Course(2, 2, 4, Color.DKGRAY).setText(""+i++));
-                mCourseView.addCourseAfterInit(new Course(course.getRow(), 2, course.getCol(), Color.DKGRAY).setText(""+i++));
+                mCourseView.addCourseAfterInit(new Course(course.getRow(),
+                        2, course.getCol(), Color.DKGRAY).setText(""+i++));
             }
         });
 

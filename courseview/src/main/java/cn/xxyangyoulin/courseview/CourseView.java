@@ -348,7 +348,7 @@ public class CourseView extends FrameLayout {
 
         tv.setLayoutParams(params);
 
-        tv.setText("Text");
+        tv.setText(course.getText());
         tv.setLineSpacing(-2, 1);
         tv.setPadding(mTextLRPadding, mTextTBPadding, mTextLRPadding, mTextTBPadding);
         tv.setTextColor(mTextColor);
@@ -531,18 +531,15 @@ public class CourseView extends FrameLayout {
         return mTextLRPadding;
     }
 
-    public CourseView setTextLRPadding(int textLRPadding) {
+    public CourseView setTextLRPadding(int textLRPadding, int textTBPadding) {
         mTextLRPadding = textLRPadding;
+        mTextTBPadding = textTBPadding;
+
         return this;
     }
 
     public int getTextTBPadding() {
         return mTextTBPadding;
-    }
-
-    public CourseView setTextTBPadding(int textTBPadding) {
-        mTextTBPadding = textTBPadding;
-        return this;
     }
 
     public int getTextColor() {
