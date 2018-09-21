@@ -4,7 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.drawable.StateListDrawable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -22,9 +24,6 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import static android.widget.ImageView.ScaleType.CENTER;
-import static android.widget.LinearLayout.VERTICAL;
-
 public class CourseView extends FrameLayout {
 
     private int mWidth;
@@ -35,18 +34,43 @@ public class CourseView extends FrameLayout {
 
     private int mRowItemWidth = dip2px(50);
     private int mColItemHeight = dip2px(60);
+
+    private int currentIndex = 1;
+
+    /** 行item的宽度根据view的总宽度自动平均分配 */
     private boolean mRowItemWidthAuto = true;
 
-    int mTableTags[][];
-
     List<Course> mCourseList = new ArrayList<>();
+
     private Course mAddTagCourse;
     private View mAddTagCourseView;
 
-    private Paint mLinePaint;
-    private boolean childDrawTag;
+    /** item view radius */
     private float mCourseItemRadius = 0;
 
+    private Paint mLinePaint;
+    private Path mLinePath = new Path();
+
+    /** 显示垂直分割线 */
+    private boolean mShowVerticalLine = false;
+
+    /** 显示水平分割线 */
+    private boolean mShowHorizontalLine = true;
+
+    /** 第一次绘制 */
+    private boolean mFirstDraw;
+
+    /** text padding value */
+    private int textLRPadding = dip2px(2);
+    private int textTBPadding = dip2px(2);
+
+    /** 记录网格占用状态 */
+    private short mGridStatus[][];
+
+    /** 不活跃的背景 */
+    private int mInactiveColor = 0xFF909090;
+    private int textTBMargin = dip2px(3);
+    private int textLRMargin = dip2px(3);
 
     public CourseView(@NonNull Context context) {
         super(context);
@@ -62,15 +86,19 @@ public class CourseView extends FrameLayout {
     private void initPaint() {
         mLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mLinePaint.setColor(Color.BLACK);
-        mLinePaint.setStrokeWidth(5);
+        mLinePaint.setStrokeWidth(1);
         mLinePaint.setStyle(Paint.Style.STROKE);
+        mLinePaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
     }
 
     private void init() {
         mCourseList.add(new Course(1, 1, 1, Color.RED));
+        mCourseList.add(new Course(1, 1, 1, Color.BLUE).setActiveStatus(false));
+        mCourseList.add(new Course(1, 1, 5, Color.MAGENTA).setActiveStatus(false));
         mCourseList.add(new Course(3, 2, 2, Color.GREEN));
         mCourseList.add(new Course(4, 3, 3, Color.GRAY));
         mCourseList.add(new Course(5, 2, 4, Color.YELLOW));
+        mCourseList.add(new Course(6, 2, 10, Color.CYAN));
     }
 
     @Override
@@ -85,6 +113,8 @@ public class CourseView extends FrameLayout {
             mWidth = mRowItemWidth * mRowCount;
         }
 
+        /*初始化网格记录数组*/
+
         int widthResult = MeasureSpec.makeMeasureSpec(mWidth, MeasureSpec.EXACTLY);
         int heightResult = MeasureSpec.makeMeasureSpec(mHeight, MeasureSpec.EXACTLY);
 
@@ -96,13 +126,29 @@ public class CourseView extends FrameLayout {
         super.onLayout(changed, left, top, right, bottom);
     }
 
-    private void addCourseItemView() {
+    private void initCourseItemView() {
+        /*为了方便使用行列数 我们从1开始使用数组*/
+        mGridStatus = new short[mColCount + 1][mRowCount + 1];
+
         for (Course course : mCourseList) {
-            addCourseItemView(course);
+            realAddCourseItemView(course);
         }
     }
 
-    private void addCourseItemView(Course course) {
+    public void addCourseItemView(Course course) {
+        if (course == null) {
+            return;
+        }
+
+        mCourseList.add(course);
+
+        realAddCourseItemView(course);
+    }
+
+    private void realAddCourseItemView(Course course) {
+        /*更新网格状态*/
+        updateGridStatus(course);
+
         View itemView = createItemView(course);
 
         LayoutParams params = new LayoutParams(mRowItemWidth,
@@ -112,62 +158,32 @@ public class CourseView extends FrameLayout {
         params.topMargin = (course.getCol() - 1) * mColItemHeight;
 
         itemView.setLayoutParams(params);
-        addView(itemView);
+
+        if (!course.isShowVisiable()) {
+            return;
+        }
+
+        if (course.getActiveStatus()) {
+            addView(itemView);
+        } else {
+            addView(itemView, 0);
+        }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private View createItemView(final Course course) {
-        final StopEventView bgLayout = new StopEventView(getContext());
-        //TextView
-        final TextView tv = getCourseTextView(mColItemHeight * course.getRowNum(), mRowItemWidth);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        params.setMargins(10, 10, 10, 10);
-        tv.setLayoutParams(params);
-        tv.setText("Text");
-
-        tv.setLineSpacing(-2, 1);
-        tv.setTextColor(Color.BLUE);
-
-        bgLayout.addView(tv);
-
-
-        setCurBg(course, tv);
-        tv.setClickable(true);
-        tv.setFocusable(true);
-
-        itemEvent(course, tv);
-
-        return bgLayout;
+    private void updateGridStatus(Course course) {
+        for (int i = 0; i < course.getRowNum(); i++) {
+            mGridStatus[course.getCol() + i][course.getRow()] += 1;
+        }
     }
 
-    private void itemEvent(final Course course, final TextView tv) {
-        tv.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mItemClickListener != null) {
-                    mItemClickListener.onClick(course, tv);
-                }
-            }
-        });
-
-        tv.setOnLongClickListener(new OnLongClickListener() {
-
-            @Override
-            public boolean onLongClick(View v) {
-                if (mItemClickListener != null) {
-                    mItemClickListener.onLongClick(course, tv);
-                    return true;
-                }
-                return false;
-            }
-        });
-    }
-
-    private void setCurBg(Course course, View itemView) {
+    private void setItemViewBackground(Course course, View itemView) {
         StateListDrawable drawable;
-        drawable = getShowBgDrawable(course.getColor(), course.getColor() & 0x80FFFFFF);
+
+        if (course.getActiveStatus()) {
+            drawable = getShowBgDrawable(course.getColor(), course.getColor() & 0x80FFFFFF);
+        } else {
+            drawable = getShowBgDrawable(mInactiveColor, mInactiveColor & 0x80FFFFFF);
+        }
         itemView.setBackground(drawable);
     }
 
@@ -189,14 +205,16 @@ public class CourseView extends FrameLayout {
         return tv;
     }
 
+
     @Override
     protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
 
         drawLine(canvas);
-        if (!childDrawTag) {
-            addCourseItemView();
-            childDrawTag = true;
+        if (!mFirstDraw) {
+            initCourseItemView();
+            mFirstDraw = true;
+            printArray(mGridStatus);
 
             setOnItemClickListener(new OnItemClickListener() {
                 @Override
@@ -208,19 +226,31 @@ public class CourseView extends FrameLayout {
                 @Override
                 void onAdd(Course course, View addView) {
                     super.onAdd(course, addView);
-                    System.out.println("add");
+                    addCourseItemView(new Course(2, 2, 4, Color.DKGRAY));
                 }
             });
         }
     }
 
     private void drawLine(Canvas canvas) {
-        for (int i = 1; i < mRowCount; i++) {
-            canvas.drawLine(i * mRowItemWidth, 0, i * mRowItemWidth, mHeight, mLinePaint);
+        //横线
+        if (mShowHorizontalLine) {
+            for (int i = 1; i < mColCount; i++) {
+                mLinePath.reset();
+                mLinePath.moveTo(0, i * mColItemHeight);
+                mLinePath.lineTo(mWidth, i * mColItemHeight);
+                canvas.drawPath(mLinePath, mLinePaint);
+            }
         }
 
-        for (int i = 1; i < mColCount; i++) {
-            canvas.drawLine(0, i * mColItemHeight, mWidth, i * mColItemHeight, mLinePaint);
+        //竖线
+        if (mShowVerticalLine) {
+            for (int i = 1; i < mRowCount; i++) {
+                mLinePath.reset();
+                mLinePath.moveTo(i * mRowItemWidth, 0);
+                mLinePath.lineTo(i * mRowItemWidth, mHeight);
+                canvas.drawPath(mLinePath, mLinePaint);
+            }
         }
     }
 
@@ -233,12 +263,12 @@ public class CourseView extends FrameLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 System.out.println(event.getX() + "-d--" + event.getY());
-                addTagCourseView((int) event.getX(), (int) event.getY());
-                break;
+                return true; //TODO why?
             case MotionEvent.ACTION_MOVE:
                 break;
             case MotionEvent.ACTION_UP:
                 System.out.println("up");
+                addTagCourseView((int) event.getX(), (int) event.getY());
                 break;
         }
 
@@ -277,11 +307,18 @@ public class CourseView extends FrameLayout {
         }
     }
 
+    /**
+     * 建立添加按钮
+     */
     private View createAddTagView() {
+        final StopEventView bgLayout = new StopEventView(getContext());
+
         ImageView iv = new ImageView(getContext());
 
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(mRowItemWidth, mColItemHeight);
-        params.setMargins(10, 10, 10, 10);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        params.setMargins(textLRMargin, textTBMargin, textLRMargin, textTBMargin);
         iv.setLayoutParams(params);
 
         iv.setImageResource(R.drawable.ic_add_black_24dp);
@@ -295,10 +332,73 @@ public class CourseView extends FrameLayout {
             public void onClick(View v) {
                 if (mItemClickListener != null) {
                     mItemClickListener.onAdd(mAddTagCourse, mAddTagCourseView);
+                    removeAddTagView();
                 }
             }
         });
-        return iv;
+
+        bgLayout.addView(iv);
+        return bgLayout;
+    }
+
+    /**
+     * 建立itemview
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private View createItemView(final Course course) {
+        final StopEventView bgLayout = new StopEventView(getContext());
+        //TextView
+        final TextView tv = getCourseTextView(mColItemHeight * course.getRowNum(), mRowItemWidth);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+
+        int tag1 = course.getActiveStatus() ? 1 : -1;
+        int tag2 = tag1 == -1 ? 2 : 1;
+        params.setMargins(textLRMargin, textTBMargin, textLRMargin, textTBMargin);
+        //params.setMargins(textLRMargin * tag2, textTBMargin * tag2,
+        //        tag1 * textLRMargin, tag1 * textTBMargin);
+
+        tv.setLayoutParams(params);
+
+        tv.setText("Text");
+        tv.setLineSpacing(-2, 1);
+        tv.setPadding(textLRPadding, textTBPadding, textLRPadding, textTBPadding);
+        tv.setTextColor(Color.BLUE);
+
+        bgLayout.addView(tv);
+
+        setItemViewBackground(course, tv);
+        tv.setClickable(true);
+        tv.setFocusable(true);
+
+        itemEvent(course, tv);
+
+        return bgLayout;
+    }
+
+    private void itemEvent(final Course course, final TextView tv) {
+        tv.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mItemClickListener != null) {
+                    mItemClickListener.onClick(course, tv);
+                }
+            }
+        });
+
+        tv.setOnLongClickListener(new OnLongClickListener() {
+
+            @Override
+            public boolean onLongClick(View v) {
+                if (mItemClickListener != null) {
+                    mItemClickListener.onLongClick(course, tv);
+                    return true;
+                }
+                return false;
+            }
+        });
     }
 
     private void realAddTagCourseView() {
@@ -312,17 +412,23 @@ public class CourseView extends FrameLayout {
         addView(mAddTagCourseView);
     }
 
-
     private OnItemClickListener mItemClickListener;
 
     public class OnItemClickListener {
-        void onClick(Course course, View itemLayout) {
+        void onClick(Course course, View itemView) {
         }
 
-        void onLongClick(Course course, View itemLayout) {
+        void onLongClick(Course course, View itemView) {
         }
 
         void onAdd(Course course, View addView) {
+        }
+
+        /**
+         * 活跃状态的item占用了相同的网格，将会重叠显示
+         */
+        void onGridOccupationError(Course... courses) {
+
         }
     }
 
@@ -331,8 +437,21 @@ public class CourseView extends FrameLayout {
         return this;
     }
 
-
     public int dip2px(float dpValue) {
         return (int) (0.5f + dpValue * getContext().getResources().getDisplayMetrics().density);
+    }
+
+    public void printArray(short[][] data) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("\n");
+        int i = 0;
+        for (short[] a : data) {
+            for (short b : a) {
+                builder.append(b);
+            }
+            builder.append("   ").append(i++).append("\n");
+        }
+
+        System.out.println(builder.toString());
     }
 }
