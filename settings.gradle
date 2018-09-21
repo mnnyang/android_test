@@ -1,1 +1,1 @@
-include ':app', ':test_okhttp', ':library', ':courseview'
+include ':app', ':test_okhttp', ':library', ':courseview', ':test_widget'
