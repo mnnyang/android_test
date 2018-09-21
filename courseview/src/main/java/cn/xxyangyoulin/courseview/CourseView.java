@@ -61,11 +61,9 @@ public class CourseView extends FrameLayout {
     private boolean mFirstDraw;
 
     /** text padding value */
-    private int textLRPadding = dip2px(2);
-    private int textTBPadding = dip2px(2);
-
-    /** 记录网格占用状态 */
-    private short mGridStatus[][];
+    private int mTextLRPadding = dip2px(2);
+    private int mTextTBPadding = dip2px(2);
+    private int mTextColor = Color.WHITE;
 
     /** 不活跃的背景 */
     private int mInactiveColor = 0xFF909090;
@@ -80,6 +78,10 @@ public class CourseView extends FrameLayout {
         super(context, attrs);
 
         init();
+    }
+
+    private void init() {
+        l("调用init");
         initPaint();
     }
 
@@ -91,19 +93,12 @@ public class CourseView extends FrameLayout {
         mLinePaint.setPathEffect(new DashPathEffect(new float[]{5, 5}, 0));
     }
 
-    private void init() {
-        mCourseList.add(new Course(1, 1, 1, Color.RED));
-        mCourseList.add(new Course(1, 1, 1, Color.BLUE).setActiveStatus(false));
-        mCourseList.add(new Course(1, 1, 5, Color.MAGENTA).setActiveStatus(false));
-        mCourseList.add(new Course(3, 2, 2, Color.GREEN));
-        mCourseList.add(new Course(4, 3, 3, Color.GRAY));
-        mCourseList.add(new Course(5, 2, 4, Color.YELLOW));
-        mCourseList.add(new Course(6, 2, 10, Color.CYAN));
-    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        l("调用onMeasure");
+
         mHeight = mColItemHeight * mColCount;
 
         if (mRowItemWidthAuto) {
@@ -121,33 +116,39 @@ public class CourseView extends FrameLayout {
         setMeasuredDimension(widthResult, heightResult);
     }
 
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-    }
-
+    /** 把数组中的数据全部添加到界面 */
     private void initCourseItemView() {
-        /*为了方便使用行列数 我们从1开始使用数组*/
-        mGridStatus = new short[mColCount + 1][mRowCount + 1];
+        l("调用initCourseItemView");
 
         for (Course course : mCourseList) {
             realAddCourseItemView(course);
         }
     }
 
-    public void addCourseItemView(Course course) {
+    /** 在界面初始化之前添加数据 */
+    public void addCourseBeforeInit(Course course) {
         if (course == null) {
             return;
         }
 
-        mCourseList.add(course);
+        if (!mCourseList.contains(course)) {
+            mCourseList.add(course);
+        }
+    }
 
-        realAddCourseItemView(course);
+    /** 在界面初始化之后添加数据 */
+    public void addCourseAfterInit(Course course) {
+        if (course == null) {
+            return;
+        }
+
+        if (!mCourseList.contains(course)) {
+            mCourseList.add(course);
+            realAddCourseItemView(course);
+        }
     }
 
     private void realAddCourseItemView(Course course) {
-        /*更新网格状态*/
-        updateGridStatus(course);
 
         View itemView = createItemView(course);
 
@@ -167,12 +168,6 @@ public class CourseView extends FrameLayout {
             addView(itemView);
         } else {
             addView(itemView, 0);
-        }
-    }
-
-    private void updateGridStatus(Course course) {
-        for (int i = 0; i < course.getRowNum(); i++) {
-            mGridStatus[course.getCol() + i][course.getRow()] += 1;
         }
     }
 
@@ -199,36 +194,23 @@ public class CourseView extends FrameLayout {
         TextView tv = new TextView(getContext());
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(w, h);
         tv.setLayoutParams(params);
+
+        tv.setTextColor(mTextColor);
         //bold
         TextPaint tp = tv.getPaint();
         tp.setFakeBoldText(true);
         return tv;
     }
 
-
     @Override
     protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
 
         drawLine(canvas);
+
         if (!mFirstDraw) {
             initCourseItemView();
             mFirstDraw = true;
-            printArray(mGridStatus);
-
-            setOnItemClickListener(new OnItemClickListener() {
-                @Override
-                void onClick(Course course, View itemLayout) {
-                    System.out.println("click");
-                    super.onClick(course, itemLayout);
-                }
-
-                @Override
-                void onAdd(Course course, View addView) {
-                    super.onAdd(course, addView);
-                    addCourseItemView(new Course(2, 2, 4, Color.DKGRAY));
-                }
-            });
         }
     }
 
@@ -255,7 +237,6 @@ public class CourseView extends FrameLayout {
     }
 
     /*事件*/
-
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -305,6 +286,11 @@ public class CourseView extends FrameLayout {
         if (mAddTagCourseView != null) {
             removeView(mAddTagCourseView);
         }
+    }
+
+    public void resetView() {
+        removeAllViews();
+        initCourseItemView();
     }
 
     /**
@@ -364,8 +350,8 @@ public class CourseView extends FrameLayout {
 
         tv.setText("Text");
         tv.setLineSpacing(-2, 1);
-        tv.setPadding(textLRPadding, textTBPadding, textLRPadding, textTBPadding);
-        tv.setTextColor(Color.BLUE);
+        tv.setPadding(mTextLRPadding, mTextTBPadding, mTextLRPadding, mTextTBPadding);
+        tv.setTextColor(mTextColor);
 
         bgLayout.addView(tv);
 
@@ -373,27 +359,42 @@ public class CourseView extends FrameLayout {
         tv.setClickable(true);
         tv.setFocusable(true);
 
-        itemEvent(course, tv);
+        itemEvent(course, bgLayout, tv);
 
         return bgLayout;
     }
 
-    private void itemEvent(final Course course, final TextView tv) {
-        tv.setOnClickListener(new OnClickListener() {
+    private void itemEvent(final Course course, final ViewGroup viewGroup, TextView textView) {
+        final List<Course> courses = new ArrayList<>();
+        courses.add(course);
+
+        /*查找在点击的item范围内重叠的item*/
+        for (Course findCourse : mCourseList) {
+            if (findCourse.getRow() == course.getRow()
+                    && course != findCourse) {
+
+                if (findCourse.getCol() < course.getCol() + course.getRowNum()
+                        && findCourse.getCol() >= course.getCol()) {
+                    courses.add(findCourse);
+                }
+            }
+        }
+
+        textView.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mItemClickListener != null) {
-                    mItemClickListener.onClick(course, tv);
+                    mItemClickListener.onClick(courses, viewGroup);
                 }
             }
         });
 
-        tv.setOnLongClickListener(new OnLongClickListener() {
+        textView.setOnLongClickListener(new OnLongClickListener() {
 
             @Override
             public boolean onLongClick(View v) {
                 if (mItemClickListener != null) {
-                    mItemClickListener.onLongClick(course, tv);
+                    mItemClickListener.onLongClick(courses, viewGroup);
                     return true;
                 }
                 return false;
@@ -414,44 +415,165 @@ public class CourseView extends FrameLayout {
 
     private OnItemClickListener mItemClickListener;
 
-    public class OnItemClickListener {
-        void onClick(Course course, View itemView) {
+    public static class OnItemClickListener {
+        void onClick(List<Course> course, View itemView) {
         }
 
-        void onLongClick(Course course, View itemView) {
+        void onLongClick(List<Course> course, View itemView) {
         }
 
         void onAdd(Course course, View addView) {
         }
 
-        /**
-         * 活跃状态的item占用了相同的网格，将会重叠显示
-         */
+        /** 活跃状态的item占用了相同的网格，将会重叠显示 */
         void onGridOccupationError(Course... courses) {
 
         }
     }
 
-    public CourseView setOnItemClickListener(OnItemClickListener itemClickListener) {
+    public void setOnItemClickListener(OnItemClickListener itemClickListener) {
         mItemClickListener = itemClickListener;
-        return this;
     }
 
     public int dip2px(float dpValue) {
         return (int) (0.5f + dpValue * getContext().getResources().getDisplayMetrics().density);
     }
 
-    public void printArray(short[][] data) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("\n");
-        int i = 0;
-        for (short[] a : data) {
-            for (short b : a) {
-                builder.append(b);
-            }
-            builder.append("   ").append(i++).append("\n");
-        }
+    public static void l(String s) {
+        System.out.println("------------------" + s);
+    }
 
-        System.out.println(builder.toString());
+    /***************************************************/
+
+    public int getRowCount() {
+        return mRowCount;
+    }
+
+    public CourseView setRowCount(int rowCount) {
+        mRowCount = rowCount;
+        return this;
+    }
+
+    public int getColCount() {
+        return mColCount;
+    }
+
+    public CourseView setColCount(int colCount) {
+        mColCount = colCount;
+        return this;
+    }
+
+    public int getRowItemWidth() {
+        return mRowItemWidth;
+    }
+
+    public CourseView setRowItemWidth(int rowItemWidth) {
+
+        mRowItemWidth = rowItemWidth;
+        return this;
+    }
+
+    public int getColItemHeight() {
+        return mColItemHeight;
+    }
+
+    public CourseView setColItemHeight(int colItemHeight) {
+        mColItemHeight = colItemHeight;
+        return this;
+    }
+
+    public int getCurrentIndex() {
+        return currentIndex;
+    }
+
+    public CourseView setCurrentIndex(int currentIndex) {
+        this.currentIndex = currentIndex;
+        return this;
+    }
+
+    public boolean isRowItemWidthAuto() {
+        return mRowItemWidthAuto;
+    }
+
+    public CourseView setRowItemWidthAuto(boolean rowItemWidthAuto) {
+        mRowItemWidthAuto = rowItemWidthAuto;
+        return this;
+    }
+
+    public float getCourseItemRadius() {
+        return mCourseItemRadius;
+    }
+
+    public CourseView setCourseItemRadius(float courseItemRadius) {
+        mCourseItemRadius = courseItemRadius;
+        return this;
+    }
+
+    public boolean isShowVerticalLine() {
+        return mShowVerticalLine;
+    }
+
+    public CourseView setShowVerticalLine(boolean showVerticalLine) {
+        mShowVerticalLine = showVerticalLine;
+        return this;
+    }
+
+    public boolean isShowHorizontalLine() {
+        return mShowHorizontalLine;
+    }
+
+    public CourseView setShowHorizontalLine(boolean showHorizontalLine) {
+        mShowHorizontalLine = showHorizontalLine;
+        return this;
+    }
+
+    public int getTextLRPadding() {
+        return mTextLRPadding;
+    }
+
+    public CourseView setTextLRPadding(int textLRPadding) {
+        mTextLRPadding = textLRPadding;
+        return this;
+    }
+
+    public int getTextTBPadding() {
+        return mTextTBPadding;
+    }
+
+    public CourseView setTextTBPadding(int textTBPadding) {
+        mTextTBPadding = textTBPadding;
+        return this;
+    }
+
+    public int getTextColor() {
+        return mTextColor;
+    }
+
+    public CourseView setTextColor(int textColor) {
+        mTextColor = textColor;
+        return this;
+    }
+
+    public int getInactiveColor() {
+        return mInactiveColor;
+    }
+
+    public CourseView setInactiveColor(int inactiveColor) {
+        mInactiveColor = inactiveColor;
+        return this;
+    }
+
+    public CourseView setTextTBMargin(int textTBMargin, int textLRMargin) {
+        this.textTBMargin = textTBMargin;
+        this.textLRMargin = textLRMargin;
+        return this;
+    }
+
+    public int getTextTBMargin() {
+        return textTBMargin;
+    }
+
+    public int getTextLRMargin() {
+        return textLRMargin;
     }
 }

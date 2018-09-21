@@ -90,4 +90,14 @@ public class Course {
         this.showVisiable = showVisiable;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "Course{" +
+                "row=" + row +
+                ", rowNum=" + rowNum +
+                ", col=" + col +
+                ", text=" + text +
+                '}';
+    }
 }
